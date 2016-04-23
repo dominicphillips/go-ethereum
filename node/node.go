@@ -20,6 +20,7 @@ package node
 import (
 	"errors"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -65,6 +66,7 @@ type Node struct {
 	httpHost      string       // HTTP hostname
 	httpPort      int          // HTTP post
 	httpEndpoint  string       // HTTP endpoint (interface + port) to listen at (empty = HTTP disabled)
+	httpProxy     string       // Upstream server for proxy requests. (empty = disabled)
 	httpWhitelist []string     // HTTP RPC modules to allow through this endpoint
 	httpCors      string       // HTTP RPC Cross-Origin Resource Sharing header
 	httpListener  net.Listener // HTTP RPC listener socket to server API requests
@@ -117,6 +119,7 @@ func New(conf *Config) (*Node, error) {
 		httpHost:      conf.HTTPHost,
 		httpPort:      conf.HTTPPort,
 		httpEndpoint:  conf.HTTPEndpoint(),
+		httpProxy:     conf.HTTPProxy,
 		httpWhitelist: conf.HTTPModules,
 		httpCors:      conf.HTTPCors,
 		wsHost:        conf.WSHost,
@@ -311,7 +314,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 				glog.V(logger.Error).Infof("IPC accept failed: %v", err)
 				continue
 			}
-			go handler.ServeCodec(rpc.NewJSONCodec(conn), rpc.OptionMethodInvocation | rpc.OptionSubscriptions)
+			go handler.ServeCodec(rpc.NewJSONCodec(conn), rpc.OptionMethodInvocation|rpc.OptionSubscriptions)
 		}
 	}()
 	// All listeners booted successfully
@@ -364,7 +367,18 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, modules []string, cors
 	if listener, err = net.Listen("tcp", endpoint); err != nil {
 		return err
 	}
-	go rpc.NewHTTPServer(cors, handler).Serve(listener)
+
+	if n.httpProxy != "" {
+		target, err := url.Parse(n.httpProxy)
+		if err != nil {
+			return err
+		}
+		glog.V(logger.Info).Infof("HTTP using proxy: %v", target)
+		go rpc.NewHTTPProxyServer(target, cors, handler).Serve(listener)
+	} else {
+		go rpc.NewHTTPServer(cors, handler).Serve(listener)
+	}
+
 	glog.V(logger.Info).Infof("HTTP endpoint opened: http://%s", endpoint)
 
 	// All listeners booted successfully

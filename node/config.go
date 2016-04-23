@@ -113,6 +113,9 @@ type Config struct {
 	// useless for custom HTTP clients.
 	HTTPCors string
 
+	// HTTPProxy is the address of the server to proxy requests to.
+	HTTPProxy string
+
 	// HTTPModules is a list of API modules to expose via the HTTP RPC interface.
 	// If the module list is empty, all RPC API endpoints designated public will be
 	// exposed.

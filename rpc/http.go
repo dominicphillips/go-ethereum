@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 
@@ -139,4 +140,28 @@ func NewHTTPServer(corsString string, srv *Server) *http.Server {
 	return &http.Server{
 		Handler: handler,
 	}
+}
+
+// NewHTTPProxyServer creates a new HTTP RPC server proxy around an API provider.
+func NewHTTPProxyServer(target *url.URL, corsString string, srv *Server) *http.Server {
+	var allowedOrigins []string
+	for _, domain := range strings.Split(corsString, ",") {
+		allowedOrigins = append(allowedOrigins, strings.TrimSpace(domain))
+	}
+
+	c := cors.New(cors.Options{
+		AllowedOrigins: allowedOrigins,
+		AllowedMethods: []string{"POST", "GET"},
+	})
+
+	// create proxy handler
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		httputil.NewSingleHostReverseProxy(target).ServeHTTP(w, r)
+		return
+	}
+
+	return &http.Server{
+		Handler: c.Handler(http.HandlerFunc(handler)),
+	}
+
 }

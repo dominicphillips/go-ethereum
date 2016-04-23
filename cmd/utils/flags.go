@@ -244,6 +244,11 @@ var (
 		Usage: "HTTP-RPC server listening port",
 		Value: common.DefaultHTTPPort,
 	}
+	RPCProxyFlag = cli.StringFlag{
+		Name:  "rpcproxy",
+		Usage: "HTTP-RPC proxy address",
+		Value: "",
+	}
 	RPCCORSDomainFlag = cli.StringFlag{
 		Name:  "rpccorsdomain",
 		Usage: "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
@@ -662,6 +667,7 @@ func MakeSystemNode(name, version string, extra []byte, ctx *cli.Context) *node.
 		HTTPHost:        MakeHTTPRpcHost(ctx),
 		HTTPPort:        ctx.GlobalInt(RPCPortFlag.Name),
 		HTTPCors:        ctx.GlobalString(RPCCORSDomainFlag.Name),
+		HTTPProxy:       ctx.GlobalString(RPCProxyFlag.Name),
 		HTTPModules:     MakeRPCModules(ctx.GlobalString(RPCApiFlag.Name)),
 		WSHost:          MakeWSRpcHost(ctx),
 		WSPort:          ctx.GlobalInt(WSPortFlag.Name),
